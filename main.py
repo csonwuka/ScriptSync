@@ -1,4 +1,5 @@
 import streamlit as st
+import googletrans
 from moviepy.editor import VideoFileClip
 from openai import OpenAI
 
@@ -51,19 +52,9 @@ def translate_video(api_key, audio_file_path):
     return translations
 
 
-def translate_to_fr(api_key, en_word):
-    client = OpenAI(api_key=api_key)
-    prompt = f"Translate the following English word to French: '{en_word}'. Only return the exact translation of {en_word}. Nothing more"
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that translates English words to French."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    # Extract the translation from the response
-    translation = response.choices[0].message.content
-    return translation
+def translate_to_fr(en_word, dest_lang):
+    translation = googletrans.Translator().translate(text=en_word, dest=dest_lang)
+    return translation.text
 
 
 def seconds_to_vtt_timestamp(seconds):
@@ -83,11 +74,12 @@ def json_to_vtt(transcription_segments, vtt_file, translation_format):
             end_timestamp = seconds_to_vtt_timestamp(subtitle['end'])
             f.write(f"{subtitle['id']}\n")
             f.write(f"{start_timestamp} --> {end_timestamp}\n")
-            if translation_format == "French to English":
-                f.write(f"{subtitle['text']}\n\n")
-            elif translation_format == "English to French":
-                fr_text = translate_to_fr(api_key=openai_api_key, en_word=subtitle['text'])
+            if translation_format == "English to French":
+                dest_lang = translation_format.split(" ")[2][:2].lower()
+                fr_text = translate_to_fr(en_word=subtitle['text'], dest_lang=dest_lang)
                 f.write(f"{fr_text}\n\n")
+            elif translation_format == "French to English":
+                f.write(f"{subtitle['text']}\n\n")
 
 
 # STREAMLIT UI
